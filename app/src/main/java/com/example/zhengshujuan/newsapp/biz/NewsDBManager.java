@@ -149,11 +149,12 @@ public class NewsDBManager {
 		}
 		return newsList;
 	}
-	
+
 	/**
 	 * 保存新闻分类
-	 * @param news
-	 */
+	 * @param types
+	 * @return
+     */
 	public boolean saveNewsType(List<SubType> types){
 		for(SubType type:types) {
 			try {

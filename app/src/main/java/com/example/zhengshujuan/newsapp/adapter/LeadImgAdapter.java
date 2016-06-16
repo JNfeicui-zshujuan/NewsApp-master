@@ -21,7 +21,7 @@ public class LeadImgAdapter extends PagerAdapter {
     public int getCount() {
         return list.size();
     }
-//判断是否由对象生成界面
+   //判断是否由对象生成界面
     @Override
     public boolean isViewFromObject(View arg0, Object arg1) {
         return arg0==(View)arg1;

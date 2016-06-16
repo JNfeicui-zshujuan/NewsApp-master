@@ -8,8 +8,14 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
+import android.util.Log;
+import android.util.LruCache;
+import android.widget.ImageView;
+import android.widget.ListView;
 
-import com.example.zhengshujuan.newsapp.biz.ImageLoadListener;
+import com.android.volley.toolbox.ImageLoader;
+import com.example.zhengshujuan.newsapp.R;
+import com.example.zhengshujuan.newsapp.volley.VolleyHttp;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -19,7 +25,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,8 +37,11 @@ import java.util.Map;
  * 3. 最终调用的方法得到图片先判断是不是内存 -- 文件 -- 网络
  */
 public class LoadImage {
+    public static final String TAG = "ActivityMain";
     private Context context;
     private ImageLoadListener listener;
+    ListView li;
+    private ImageView iv;
 
     public LoadImage(Context context, ImageLoadListener listener) {
         this.context = context;
@@ -45,6 +53,7 @@ public class LoadImage {
 
     public interface ImageLoadListener {
         void imageLoadOk(Bitmap bitmap, String url);
+
     }
 
     /**
@@ -77,13 +86,15 @@ public class LoadImage {
                 InputStream inputStream = conn.getInputStream();
                 //得到图片
                 bitmap = BitmapFactory.decodeStream(inputStream);
+                Log.d(TAG, "doInBackground: 网络得到bitmap" + bitmap);
                 //存入软引用中
-                saveSoftReference(params[0], bitmap);
+                cache.put(params[0], bitmap);
                 //存在缓存文件中
                 saveCachFile(params[0], bitmap);
             } catch (java.io.IOException e) {
                 e.printStackTrace();
             }
+            Log.d(TAG, "doInBackground: " + bitmap);
             return bitmap;
         }
 
@@ -94,7 +105,10 @@ public class LoadImage {
             super.onPostExecute(bitmap);
             if (listener != null) {
                 //线程结束后返回图片和路径
+//                iv = (ImageView) li.findViewById(R.id.imageView1);
+//                iv.setImageBitmap(bitmap);
                 listener.imageLoadOk(bitmap, url);
+                Log.d(TAG, "onPostExecute: 获取的bitmap" + bitmap);
             }
         }
 
@@ -110,53 +124,65 @@ public class LoadImage {
         //执行加载
         imageAsyncTask.execute(url);
     }
-/*
-* 定义图片缓存机制
-* 最终调用的方法: 先查看内存中有没有，再看缓存文件中有没有，最后只能向网络
-请求图片
-*
-* */
-    public Bitmap getBitmap(String url){
-        Bitmap bitmap=null;
-        if (url==null||url.length()<=0){
+
+    /*
+    * 定义图片缓存机制
+    * 最终调用的方法: 先查看内存中有没有，再看缓存文件中有没有，最后只能向网络
+    请求图片
+    *
+    * */
+    public Bitmap getBitmap(String url, ImageView iv) {
+        Bitmap bitmap = null;
+        if (url == null || url.length() <= 0) {
+            Log.d(TAG, "getBitmap: shibuhsikong " + url);
             return bitmap;
+
         }
         //内存中
-        bitmap=getBitmapSoftReferences(url);
-        if (bitmap!=null){
-            return bitmap;
+        bitmap = getBitmapSoftReferences(url);
+        if (bitmap != null) {
+            iv.setImageBitmap(bitmap);
+            Log.d(TAG, "getBitmap: 内存中" + bitmap);
         }
         //缓存文件中
-        bitmap=getBitmapFromCache(url);
-        if (bitmap!=null){
+        bitmap = getBitmapFromCache(url);
+        if (bitmap != null) {
+            Log.d(TAG, "getBitmap: 缓存文件中" + bitmap);
+            iv.setImageBitmap(bitmap);
             return bitmap;
         }
         //网络的
         getBitmapAsync(url);
+        Log.d(TAG, "getBitmap: 网络中获取" + bitmap);
+
         return bitmap;
     }
+
     private void publishProgress(String[] params) {
     }
 
     //软引用存内存只要不关闭该程序一直存放????
-    private static Map<String, SoftReference<Bitmap>> softReferences = new HashMap<String, SoftReference<Bitmap>>();
+//    private static Map<String, SoftReference<Bitmap>> softReferences = new HashMap<String, SoftReference<Bitmap>>();
+private static LruCache<String ,Bitmap> cache=new LruCache<>(1024*1024*3);
 
     //定义内存缓存存储和获取的方法
-    public void saveSoftReference(String url, Bitmap bitmap) {
-        //存在内存中的一个图片
-        SoftReference<Bitmap> softBitmap = new SoftReference<Bitmap>(bitmap);
-        //存在集合中
-        softReferences.put(url, softBitmap);
-    }
+//    public void saveSoftReference(String url, Bitmap bitmap) {
+//        //存在内存中的一个图片
+////        SoftReference<Bitmap> softBitmap = new SoftReference<Bitmap>(bitmap);
+//        //存在集合中
+////        softReferences.put(url, softBitmap);
+//    }
 
     //得到内存的图片软引用
     public Bitmap getBitmapSoftReferences(String url) {
         Bitmap bitmap = null;
+        bitmap=cache.get(url);
+
         //如果内存集合中根据key得到values
-        if (softReferences.containsKey(url)) {
-            //得到软引用中的图片
-            bitmap = softReferences.get(url).get();
-        }
+//        if (softReferences.containsKey(url)) {
+//            //得到软引用中的图片
+//            bitmap = softReferences.get(url).get();
+//        }
         return bitmap;
     }
 
@@ -214,6 +240,7 @@ public class LoadImage {
         }
         //将找到的文件转化为bitmap
         Bitmap bitmap = BitmapFactory.decodeFile(bitFile.getAbsolutePath());
+        Log.d(TAG, "getBitmapFromCache: " + bitmap);
         return bitmap;
     }
 

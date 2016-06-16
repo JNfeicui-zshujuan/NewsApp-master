@@ -11,7 +11,7 @@
         android:layout_height="60dp"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
-        android:src="@drawable/defaultpic" />
+       />
 
     <TextView
         android:id="@+id/textView1"

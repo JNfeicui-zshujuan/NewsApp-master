@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 
 import com.example.zhengshujuan.newsapp.entity.News;
+import com.example.zhengshujuan.newsapp.entity.SubType;
 import com.example.zhengshujuan.newsapp.ui.MyBaseActivity;
 
 import java.util.ArrayList;
@@ -18,7 +19,7 @@ import java.util.List;
 public abstract class MyBaseAdapter<N> extends BaseAdapter {
     protected LayoutInflater inflater;
     protected Context context;
-    protected List<News> myList=new ArrayList<>();
+    protected List<SubType> myList=new ArrayList<>();
     protected ArrayList<News> list=new ArrayList<>();
     //定义构造方法,并初始化context,inflater
 
@@ -28,7 +29,7 @@ public abstract class MyBaseAdapter<N> extends BaseAdapter {
     }
     //清除所有数据
     public void clear(){
-        myList.clear();
+        list.clear();
     }
     //查找所有数据
     public List<News> getAdapterData(){
@@ -47,6 +48,9 @@ public abstract class MyBaseAdapter<N> extends BaseAdapter {
             list.clear();
         }//添加一条新数据到最后
         list.add(news);
+    }
+    public void addSubType(SubType list){
+        myList.add(list);
     }
     /*
     * 添加多条记录*/

@@ -7,7 +7,7 @@ import java.io.Serializable;
  */
 public class News implements Serializable {
     //新闻id
-    private int nid;
+     int nid;
     //标题
     private String title="";
     //摘要
@@ -42,6 +42,10 @@ public class News implements Serializable {
 
     public int getType() {
         return type;
+    }
+
+    public News() {
+
     }
 
     public News(int nid, String title, String summary, String list_image,

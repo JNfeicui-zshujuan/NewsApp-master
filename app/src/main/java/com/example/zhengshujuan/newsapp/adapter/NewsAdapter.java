@@ -11,10 +11,10 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.example.zhengshujuan.newsapp.R;
+import com.example.zhengshujuan.newsapp.entity.CommonUtil;
 import com.example.zhengshujuan.newsapp.entity.LoadImage;
 import com.example.zhengshujuan.newsapp.entity.News;
 
-import news.common.CommonUtil;
 import news.common.LogUtil;
 
 /**
@@ -43,19 +43,19 @@ public class NewsAdapter extends MyBaseAdapter<News> {
             //类似于findViewById得到每一个listview的图片通过异步加载显示图片
             ImageView iv = (ImageView) listView.findViewWithTag(url);
             Log.d(TAG, "imageLoadOk: " + url);
+            Log.d(TAG, "imageLoadOk: "+bitmap);
             LogUtil.d(url);
-            if (iv != null) {
-                LogUtil.d("异步加载得到图片的url=" + url);
-                Log.d(TAG, "imageLoadOk: 图片图片图片图片");
-                iv.setImageBitmap(bitmap);
-            }
+//            if (iv != null) {
+//                LogUtil.d("异步加载得到图片的url=" + url);
+//                Log.d(TAG, "imageLoadOk: 图片图片图片图片");
+//                iv.setImageBitmap(bitmap);}
+
         }
     };
 
     //返回每一个字条目的视图
     @Override
     public View getMyView(int position, View convertView, ViewGroup parent) {
-
         HoldView holdView = null;
         if (convertView == null) {
             convertView = inflater.inflate(R.layout.mainlist_detail, null);
@@ -67,18 +67,21 @@ public class NewsAdapter extends MyBaseAdapter<News> {
         News news = list.get(position);
         //得到图片的地址
         String urlImage =news.getIcon();
+        Log.d(TAG, "getMyView: 图片地址"+urlImage);
         //给每个图片存入编号
         holdView.iv_main.setTag(CommonUtil.NETPATH+urlImage);
         //// 获取图片 1.  先从网络 2. 如果已经下载过了存在本地文件中下次启动程
        // 序从文件读取 3.. 当程序不关闭再次进入该界面从内存中读取
-        Bitmap bitmap=loadImage.getBitmap(urlImage);
+        Bitmap bitmap=loadImage.getBitmap(urlImage,holdView.iv_main);
         //如果不是网络则马上加载可以是文件或内存
         if (bitmap!=null){
             holdView.iv_main.setImageBitmap(bitmap);
+            Log.d(TAG, "getMyView: 是不是空");
         }
+        Log.d(TAG, "getMyView: 是不是是不是"+bitmap);
         holdView.tv_main_title.setText(news.getTitle());
         holdView.tv_main_text.setText(news.getSummary());
-     //   holdView.iv_main.setImageBitmap(defaultBitmap);//默认图片
+//        holdView.iv_main.setImageBitmap(defaultBitmap);//默认图片
         return convertView;
 
 

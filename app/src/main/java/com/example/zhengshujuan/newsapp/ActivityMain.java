@@ -1,47 +1,46 @@
 package com.example.zhengshujuan.newsapp;
 
-import android.app.Activity;
-import android.app.ProgressDialog;
-import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.widget.AdapterView;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.RequestQueue;
 import com.android.volley.Response;
-import com.android.volley.Response.ErrorListener;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.example.zhengshujuan.newsapp.adapter.NewsAdapter;
+import com.example.zhengshujuan.newsapp.adapter.NewsTypeAdapter;
 import com.example.zhengshujuan.newsapp.biz.NewsDBManager;
+import com.example.zhengshujuan.newsapp.biz.NewsManager;
 import com.example.zhengshujuan.newsapp.biz.ParserNews;
+import com.example.zhengshujuan.newsapp.biz.SystemUtils;
 import com.example.zhengshujuan.newsapp.entity.News;
+import com.example.zhengshujuan.newsapp.entity.SubType;
+import com.example.zhengshujuan.newsapp.entity.XListView;
+import com.example.zhengshujuan.newsapp.ui.LoginActivity;
 import com.example.zhengshujuan.newsapp.ui.MyBaseActivity;
 import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-
-import cz.jalasoft.net.http.HttpClient;
+import java.util.List;
 
 /**
  * Created by zhengshujuan on 2016/5/31.
@@ -57,16 +56,25 @@ public class ActivityMain extends MyBaseActivity implements View.OnClickListener
     RelativeLayout viewRead;
     RelativeLayout viewPic;
     SlidingMenu menu;
+    private ImageView ima_login;
+
     //初始化主界面布局控件
     ImageView im_set;
     ImageView im_share;
     TextView tv_title;
     RelativeLayout layoutContent;
-    NewsAdapter adpter;
     //新闻主界面
-    private ListView listView;
+    //  private ListView listView;
+    private XListView listView;
+    private View view;
     private NewsAdapter adapter;
-    private NewsDBManager dbManager;
+    private News news;
+    private NewsDBManager dbManager ;
+    private NewsTypeAdapter typeAdapter;
+    // private HorizontalListView horrizontalListView;
+    private HorizontalScrollView slType;
+    public static String link;
+
     //每页显示10行
     private int limit = 10;
     //第几页
@@ -75,17 +83,58 @@ public class ActivityMain extends MyBaseActivity implements View.OnClickListener
     private ParserNews newsParser;
     private Handler handler;
     private StringBuffer mStringBuffer;
+    private int mode;
+    private News data=new News();
+    private ImageView iv_share;
+    private ImageView iv_home;
 
+    // @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle
+            savedInstanceState) {
+        view = inflater.inflate(R.layout.main1_activity, container, false);
+        slType = (HorizontalScrollView) view.findViewById(R.id.sl_type);
+        return view;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main1_activity);
 
-        listView = (ListView) findViewById(R.id.lv_main);
-        adapter = new NewsAdapter(this, listView);
-        //listView.setAdapter(adapter);
+        view = View.inflate(this, R.layout.mainlist_detail, null);
+        listView = (XListView) findViewById(R.id.lv_main);
+        iv_share = (ImageView) findViewById(R.id.im_user);
+        iv_home = (ImageView) findViewById(R.id.im_set);
 
+
+        dbManager =new NewsDBManager(this);
+        typeAdapter=new NewsTypeAdapter(this);
+     //  loadNewsType();
+        if (listView != null) {
+            adapter = new NewsAdapter(this, listView);
+            listView.setAdapter(adapter);
+            listView.setPullRefreshEnable(true);
+            listView.setPullLoadEnable(true);
+            //加载监听
+            listView.setXListViewListener(listViewListener);
+            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+                    for (int i = 0; i < 20; i++) {
+                        if (i ==position-1 ) {
+                            link = adapter.getAdapterData().get(i).getLink();
+//                             News news=new News();
+//                             String link = news.getLink();
+                            Log.d(TAG, "onItemClick: " + link);
+                            Intent intent = new Intent(ActivityMain.this, AcitivityShow.class);
+                            startActivity(intent);
+                        }
+                    }
+                }
+            });
+
+        }
         Log.d(TAG, "onCreate: 主线程里");
         //主界面的控件
 //        getUrl();
@@ -105,7 +154,8 @@ public class ActivityMain extends MyBaseActivity implements View.OnClickListener
         menu.setFadeDegree(0.35f);
         menu.attachToActivity(this, SlidingMenu.SLIDING_CONTENT);
         menu.setMenu(R.layout.sliding_menu);
-        menu.setSecondaryMenu(R.layout.lead2);
+        menu.setSecondaryMenu(R.layout.sliding_menu_right);
+        ima_login= (ImageView) findViewById(R.id.imageView1);
 
         //侧拉菜单
         viewNews = (RelativeLayout) findViewById(R.id.menu_news);
@@ -118,15 +168,18 @@ public class ActivityMain extends MyBaseActivity implements View.OnClickListener
         viewComment.setOnClickListener(this);
         viewRead.setOnClickListener(this);
         viewPic.setOnClickListener(this);
-      loadData();
+        iv_share.setOnClickListener(this);
+        iv_home.setOnClickListener(this);
+        ima_login.setOnClickListener(this);
+        loadData();
         handler = new Handler() {
             public void handleMessage(Message msg) {
 
                 super.handleMessage(msg);
                 if (msg.what == 100) {
                     //存在数据库中
-                   listView.setAdapter(adpter);
-                 //  LoadDataFromDB(limit, offset);
+                    listView.setAdapter(adapter);
+                    //  LoadDataFromDB(limit, offset);
                 } else if (msg.what == 200) {
                     showToast("网络连接错误");
                 }
@@ -136,15 +189,62 @@ public class ActivityMain extends MyBaseActivity implements View.OnClickListener
 
     }
 
-    //加载网页
-//    public void getUrl() {
-//        String url = "http://www.baidu.com";
-//        mWebView = new WebView(this);
-//        mWebView.getSettings().getJavaScriptEnabled();
-//        mWebView.loadUrl(url);
-//        mWebView.setWebViewClient(new WebViewClient());
-//        setContentView(mWebView);
-//    }
+    private XListView.IXListViewListener listViewListener = new XListView.IXListViewListener() {
+        @Override
+        public void onRefresh() {
+            //数据的刷新
+            loadNextNews(false);
+            //加载完毕
+            listView.stopRefresh();
+
+            // listView.setRefreshTime(CommonUtil.getSystemtime());
+        }
+
+        @Override
+        public void onLoadMore() {
+            LoadPreNews();
+            listView.stopLoadMore();
+            listView.stopRefresh();
+
+        }
+    };
+    //加载先前的新闻数据
+
+    protected void LoadPreNews() {
+        if (listView.getCount() - 2 <= 0) {
+            return;
+//            int nId=adapter.getAdapterData().get(listView.getLastVisiblePosition()-2).getNid();
+
+
+        }
+//    getItem(listView.getLastVisiblePosition()-2)
+
+        mode = NewsManager.MODE_PREVIOUS;
+        if (SystemUtils.getInstance(getApplicationContext()).isNetConn()) {
+
+        }
+    }
+
+    private int subId = 1;
+
+    //加载新的数据
+    protected void loadNextNews(boolean isNewType) {
+        //第一条新闻的id
+        int nId = 1;
+        if (!isNewType) {
+            if (adapter.getAdapterData().size() > 0) {
+                nId = adapter.getAdapterData().get(0).getNid();
+
+            }
+        }
+        mode = NewsManager.MODE_NEXT;
+        if (SystemUtils.getInstance(getApplicationContext()).isNetConn()) {
+            NewsManager.loadNewsFromServer(getApplicationContext(), mode, subId, nId, new
+                    VolleyResponseHandler(), new VolleyErrorHandler());
+        }
+
+    }
+
 
     @Override
     public void onClick(View v) {
@@ -160,31 +260,24 @@ public class ActivityMain extends MyBaseActivity implements View.OnClickListener
                 break;
             case R.id.menu_pic:
                 break;
+            case R.id.im_user:
+                menu.toggle();
+                menu.showSecondaryMenu();
+                break;
+            case R.id.im_set:
+                menu.toggle();
+                break;
+            case R.id.imageView1:
+                openActivity(LoginActivity.class);
+                break;
+
         }
     }
 
-    /*
-    * 重写handleMessage方法接收加载处理结果
-    * */
-
-
-    //limit2每页多少行 offset2便宜多少行
-
-    /**
-     * 什么便宜了
-     */
-    private void LoadDataFromDB(int limit2, int offset2) {
-        //第一次是0页10行
-        ArrayList<News> data = dbManager.queryNews(limit2, offset2);
-        adapter.addenData(data, false);
-        adapter.update();
-        Log.d(TAG, "LoadDataFromDB: 222222222");
-        this.offset = offset + data.size();
-    }
 
     //异步加载数据
     private void loadData() {
-       // dialog = ProgressDialog.show(this, null, "加载中,请稍后...");
+        // dialog = ProgressDialog.show(this, null, "加载中,请稍后...");
 
         //启动新线程加载数据
         new Thread(new Runnable() {
@@ -218,11 +311,13 @@ public class ActivityMain extends MyBaseActivity implements View.OnClickListener
 
                 newsParser = new ParserNews(ActivityMain.this);
                 try {
-                   ArrayList<News> str= newsParser.parser(mStringBuffer.toString());
-                    adpter=new NewsAdapter(ActivityMain.this,listView);
-                    adpter.addenData(str,false);
+                    ArrayList<News> str = newsParser.parser(mStringBuffer.toString());
+//                    SubType subType=new SubType(0,"");
+                    adapter = new NewsAdapter(ActivityMain.this, listView);
+                    adapter.addenData(str, false);
+//                    adapter.addSubType(subType);
 //                    Object item = adpter.getItem(0);
-                    Log.d(TAG, "run: "+str.get(0).getSummary());
+                    Log.d(TAG, "run: " + str.get(0).getSummary());
 //                    Object item1 = adpter.getItem(1);
 //                    Log.d(TAG, "run: 111111111111111"+item1);
 //                  listView.setAdapter(adpter);
@@ -232,11 +327,11 @@ public class ActivityMain extends MyBaseActivity implements View.OnClickListener
                     e.printStackTrace();
                 }
 
-                Log.d(TAG, "run: 000000000000"+mStringBuffer);
+                Log.d(TAG, "run: 000000000000" + mStringBuffer);
 
                 //发送请求，得到返回数据
 //                dialog.dismiss();
-               handler.sendEmptyMessage(100);
+                handler.sendEmptyMessage(100);
 //                handler.sendEmptyMessage(200);
             }
         }).start();
@@ -287,5 +382,55 @@ public class ActivityMain extends MyBaseActivity implements View.OnClickListener
         }
     }
 
+    //Volley 成功新闻列表回调接口实现类
+    private class VolleyResponseHandler implements Response.Listener<String> {
+        @Override
+        public void onResponse(String response) {
+            List<SubType> types = ParserNews.parserTypeList(response);
+            boolean isClear = mode == NewsManager.MODE_NEXT ? true : false;
+                adapter.appendData(data,isClear);
+//              ActivityMain.cancelDialog();
+            adapter.update();
+//            dbManager.saveNewsType(types);
+        }
+    }
 
+    public  class VolleyErrorHandler implements Response.ErrorListener {
+
+
+        @Override
+        public void onErrorResponse(VolleyError error) {
+            // ActivityMain.cancelDialog();
+            Log.d(TAG, "onErrorResponse: 服务器连接异常.......");
+        }
+    }
+
+    //新闻单项点击事件
+//    private AdapterView.OnItemClickListener newsItemListener = new AdapterView.OnItemClickListener() {
+//        @Override
+//        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+//            //打开显示当前的新闻
+//            News news = (News) parent.getItemAtPosition(position);
+//            Intent intent = new Intent(getApplicationContext(), AcitivityShow.class);
+//            intent.putExtra("newsitem", news);
+//            getApplicationContext().startActivity(intent);
+//        }
+//    };
+
+    // 加载新闻类型
+//    private void loadNewsType() {
+//        if (dbManager.queryNewsType().size() == 0) {
+//            if (SystemUtils.getInstance(getApplicationContext()).isNetConn()) {
+//                Log.d(TAG, "loadNewsType: 1111111");
+//                NewsManager.loadNewsType(this,
+//                        new VolleyResponseHandler(),  new VolleyErrorHandler());
+//            }
+//
+//        } else {
+//            List<SubType> types = dbManager.queryNewsType();
+//            typeAdapter.appendData((News) types, true);
+//            typeAdapter.update();
+//        }
+//
+//    }
 }
